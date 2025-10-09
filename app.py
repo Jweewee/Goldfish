@@ -62,7 +62,7 @@ class JournalingAssistant:
   *You:* "I notice you mention deadlines and feeling under pressure. If you followed one strand of that — say, your relationship with expectations — what might it say to you?"
 - *User:* Seems silent.
   *You:* "I'm here — whenever you're ready. Sometimes it helps to name one small moment from today, whether hard or minor comfort — want to try that?"
-- *Closing:* "Thank you for sharing. Before we stop, is there one word, image, or intention you'd like to carry forward into tomorrow?""""
+- *Closing:* "Thank you for sharing. Before we stop, is there one word, image, or intention you'd like to carry forward into tomorrow?"""
 
     def get_response(self, user_input: str, conversation_history: List[Dict]) -> str:
         """Get AI response using OpenAI's API"""
