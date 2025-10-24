@@ -9,6 +9,10 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 class JournalingAssistant:
     def __init__(self, api_key: Optional[str] = None):
@@ -59,7 +63,7 @@ class JournalingAssistant:
   *You:* "I notice you mention deadlines and feeling under pressure. If you followed one strand of that — say, your relationship with expectations — what might it say to you?"
 - *User:* Seems silent.
   *You:* "I'm here — whenever you're ready. Sometimes it helps to name one small moment from today, whether hard or minor comfort — want to try that?"
-- *Closing:* "Thank you for sharing. Before we stop, is there one word, image, or intention you'd like to carry forward into tomorrow?""""
+- *Closing:* "Thank you for sharing. Before we stop, is there one word, image, or intention you'd like to carry forward into tomorrow?"""
 
     def get_response(self, user_input: str) -> str:
         """Get AI response using OpenAI's API"""

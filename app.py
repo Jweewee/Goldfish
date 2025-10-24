@@ -11,6 +11,10 @@ import json
 from datetime import datetime
 from typing import Dict, List, Optional
 import uuid
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key-here')
@@ -182,7 +186,7 @@ if __name__ == '__main__':
         print("WARNING: OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.")
         print("The web app will start but chat functionality will not work.")
 
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8080))
     print("Starting Goldfish Journaling Assistant...")
     print(f"Server running on port: {port}")
     app.run(debug=False, host='0.0.0.0', port=port)
