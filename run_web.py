@@ -6,6 +6,10 @@ Simple script to start the web application
 
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 def check_requirements():
     """Check if required dependencies are installed"""
@@ -51,14 +55,14 @@ def main():
             sys.exit(1)
 
     print("\n🚀 Starting web application...")
-    print("📱 Open your browser to: http://localhost:5000")
+    print("📱 Open your browser to: http://localhost:8000")
     print("⏹️  Press Ctrl+C to stop the server")
     print("=" * 50 + "\n")
 
     # Import and run the Flask app
     try:
         from app import app
-        app.run(debug=False, host='0.0.0.0', port=5000)
+        app.run(debug=False, host='0.0.0.0', port=8000)
     except KeyboardInterrupt:
         print("\n\n👋 Goodbye! Thanks for journaling with Goldfish.")
     except Exception as e:
