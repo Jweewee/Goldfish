@@ -55,14 +55,14 @@ def main():
             sys.exit(1)
 
     print("\n🚀 Starting web application...")
-    print("📱 Open your browser to: http://localhost:8000")
+    print("📱 Open your browser to: http://localhost:3000")
     print("⏹️  Press Ctrl+C to stop the server")
     print("=" * 50 + "\n")
 
     # Import and run the Flask app
     try:
         from app import app
-        app.run(debug=False, host='0.0.0.0', port=8000)
+        app.run(debug=False, host='0.0.0.0', port=3000)
     except KeyboardInterrupt:
         print("\n\n👋 Goodbye! Thanks for journaling with Goldfish.")
     except Exception as e:
