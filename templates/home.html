@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌸 Goldfish - Home</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffeef5 0%, #f0f8ff 100%);
+            min-height: 100vh;
+            color: #4a5568;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 2rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-email {
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        .logout-button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #4a5568;
+            text-decoration: none;
+        }
+
+        .logout-button:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-1px);
+        }
+
+        .welcome-section {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .welcome-section h2 {
+            color: #2d3748;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+
+        .welcome-section p {
+            color: #718096;
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .action-button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .action-button.secondary {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #2d3748;
+        }
+
+        .action-button.secondary:hover {
+            box-shadow: 0 5px 15px rgba(252, 182, 159, 0.3);
+        }
+
+        .recent-entries {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .recent-entries h3 {
+            color: #2d3748;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .entries-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .entry-item {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .entry-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .entry-summary {
+            color: #2d3748;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .entry-date {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .no-entries {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+            padding: 40px 20px;
+        }
+
+        .view-all-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .view-all-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .view-all-link a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .action-button {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌸 Goldfish</h1>
+            <div class="user-info">
+                <span class="user-email">{{ user.email }}</span>
+                <button class="logout-button" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="welcome-section">
+            <h2>Welcome back!</h2>
+            <p>Ready to continue your journey of reflection and growth?</p>
+            <div class="action-buttons">
+                <a href="/new-entry" class="action-button">Start New Entry</a>
+                <a href="/entries" class="action-button secondary">View All Entries</a>
+            </div>
+        </div>
+
+        <div class="recent-entries">
+            <h3>Recent Entries</h3>
+            {% if recent_entries %}
+                <div class="entries-list">
+                    {% for entry in recent_entries %}
+                    <div class="entry-item">
+                        <div class="entry-summary">{{ entry.summarized_text }}</div>
+                        <div class="entry-date">{{ entry.timestamp[:10] }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="view-all-link">
+                    <a href="/entries">View all entries →</a>
+                </div>
+            {% else %}
+                <div class="no-entries">
+                    <p>No entries yet. Start your first journaling session!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                try {
+                    const response = await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('Logout failed. Please try again.');
+                    }
+                } catch (error) {
+                    alert('Network error. Please try again.');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

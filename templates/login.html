@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌸 Goldfish - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffeef5 0%, #f0f8ff 100%);
+            min-height: 100vh;
+            color: #4a5568;
+            line-height: 1.6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .auth-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            background: transparent;
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .success-message {
+            background: #c6f6d5;
+            color: #2f855a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #718096;
+        }
+
+        .snackbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3748;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .snackbar.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-10px);
+        }
+
+        .snackbar.success {
+            background: #2f855a;
+        }
+
+        .snackbar.error {
+            background: #c53030;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .auth-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌸 Goldfish</h1>
+            <p>A gentle space for reflection and growth</p>
+        </div>
+
+        <div class="auth-container">
+            <div class="tab-container">
+                <button class="tab active" id="loginTab">Login</button>
+                <button class="tab" id="signupTab">Sign Up</button>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+
+            <form id="authForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <button type="submit" class="submit-button" id="submitButton">
+                    <span id="submitText">Login</span>
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Snackbar for notifications -->
+    <div class="snackbar" id="snackbar"></div>
+
+    <script>
+        let currentTab = 'login';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab appearance
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab + 'Tab').classList.add('active');
+            
+            // Update form
+            const submitText = document.getElementById('submitText');
+            submitText.textContent = tab === 'login' ? 'Login' : 'Sign Up';
+            
+            // Clear messages
+            hideMessages();
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        function hideMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        function showSnackbar(message, type = 'success') {
+            const snackbar = document.getElementById('snackbar');
+            snackbar.textContent = message;
+            snackbar.className = `snackbar ${type}`;
+            snackbar.classList.add('show');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                snackbar.classList.remove('show');
+            }, 5000);
+        }
+
+        function hideSnackbar() {
+            const snackbar = document.getElementById('snackbar');
+            snackbar.classList.remove('show');
+        }
+
+        function setLoading(isLoading) {
+            const submitButton = document.getElementById('submitButton');
+            const submitText = document.getElementById('submitText');
+            
+            submitButton.disabled = isLoading;
+            
+            if (isLoading) {
+                submitText.textContent = 'Please wait...';
+            } else {
+                submitText.textContent = currentTab === 'login' ? 'Login' : 'Sign Up';
+            }
+        }
+
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!email || !password) {
+                showError('Please fill in all fields');
+                return;
+            }
+            
+            setLoading(true);
+            hideMessages();
+            
+            try {
+                const endpoint = currentTab === 'login' ? '/api/auth/login' : '/api/auth/signup';
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (currentTab === 'signup') {
+                        // For signup, show snackbar about email verification
+                        showSnackbar('Account created! Please check your email to verify your account.', 'success');
+                        // Switch to login tab after successful signup
+                        setTimeout(() => {
+                            switchTab('login');
+                            hideSnackbar();
+                        }, 5000);
+                    } else {
+                        // For login, show success message and redirect
+                        showSuccess(data.message);
+                        setTimeout(() => {
+                            window.location.href = '/home';
+                        }, 500);
+                    }
+                } else {
+                    showError(data.error || 'Authentication failed');
+                }
+            } catch (error) {
+                showError('Network error. Please try again.');
+            }
+            
+            setLoading(false);
+        });
+
+        // Add event listeners for tab switching
+        document.getElementById('loginTab').addEventListener('click', () => switchTab('login'));
+        document.getElementById('signupTab').addEventListener('click', () => switchTab('signup'));
+
+        // Auto-focus email field
+        document.getElementById('email').focus();
+    </script>
+</body>
+</html>
