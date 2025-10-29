@@ -24,6 +24,9 @@ from services.journal_service import journal_service
 from services.embedding_service import embedding_service
 from services.rag_service import rag_service
 from services.summary_service import summary_service
+from services.agent_service import agent_service
+from services.nlu_service import nlu_service
+from services.neo4j_service import neo4j_service
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key-here')
@@ -282,12 +285,7 @@ def new_entry():
 @app.route('/chat', methods=['POST'])
 @require_auth
 def chat():
-    """Handle chat messages with RAG"""
-    if not assistant:
-        return jsonify({
-            'error': 'Assistant not available. Please check OpenAI API key configuration.'
-        }), 500
-
+    """Handle chat messages with Agent Service (RAG + NLU + GraphRAG)"""
     try:
         user = auth_service.get_current_user()
         data = request.get_json()
@@ -300,8 +298,17 @@ def chat():
         if 'conversation_history' not in session:
             session['conversation_history'] = []
 
-        # Get AI response with RAG context
-        ai_response = assistant.get_response(user_message, session['conversation_history'], user['id'])
+        # Process message through agent service (RAG → NLU → GraphRAG → Intent routing → Response)
+        result = agent_service.process_message(
+            user_input=user_message,
+            conversation_history=session['conversation_history'],
+            user_id=user['id']
+        )
+
+        if not result['success']:
+            return jsonify({'error': result.get('error', 'Processing failed')}), 500
+
+        ai_response = result['response']
 
         # Update conversation history
         session['conversation_history'].append({"role": "user", "content": user_message})
@@ -315,7 +322,12 @@ def chat():
 
         return jsonify({
             'response': ai_response,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'intent': result.get('intent', 'general'),
+            'context_used': {
+                'rag': result.get('rag_context_used', False),
+                'graph': result.get('graph_context_used', False)
+            }
         })
 
     except Exception as e:
@@ -333,7 +345,7 @@ def new_session():
 @app.route('/save_entry', methods=['POST'])
 @require_auth
 def save_entry():
-    """Save journal entry to Supabase with embeddings"""
+    """Save journal entry to Supabase with embeddings, NLU, and GraphRAG"""
     try:
         user = auth_service.get_current_user()
         
@@ -362,6 +374,41 @@ def save_entry():
         if not embedding_result['success']:
             logger.warning(f"Failed to store embeddings: {embedding_result['error']}")
         
+        # NLU Processing: Extract entities, events, emotions, relationships, and intent
+        # Combine all user messages for comprehensive NLU analysis
+        full_conversation_text = "\n".join([
+            turn.get('content', '') 
+            for turn in session['conversation_history'] 
+            if turn.get('role') == 'user'
+        ])
+        
+        graph_result = {'success': False}
+        if full_conversation_text:
+            logger.info(f"Running NLU processing for entry {entry_id}")
+            try:
+                nlu_result = nlu_service.process_text(full_conversation_text)
+                
+                # Store NLU metadata in Neo4j GraphRAG with updated schema
+                graph_result = neo4j_service.insert_entities_and_relationships(
+                    user_id=user['id'],
+                    entry_id=entry_id,
+                    entities=nlu_result.get('entities', []),
+                    relationships=nlu_result.get('relationships', []),
+                    emotions=nlu_result.get('emotions', []),
+                    events=nlu_result.get('events', []),
+                    summary=summary  # Pass summary for Entry node
+                )
+                
+                if graph_result.get('success'):
+                    logger.info(f"GraphRAG storage successful: {graph_result.get('entities_inserted', 0)} entities, "
+                               f"{graph_result.get('emotions_inserted', 0)} emotions, "
+                               f"{graph_result.get('relationships_inserted', 0)} relationships")
+                else:
+                    logger.warning(f"GraphRAG storage failed: {graph_result.get('error', 'Unknown error')}")
+            except Exception as nlu_error:
+                logger.error(f"NLU processing failed: {str(nlu_error)}")
+                graph_result = {'success': False, 'error': str(nlu_error)}
+        
         # Clear session
         session['conversation_history'] = []
         session.modified = True
@@ -369,7 +416,9 @@ def save_entry():
         return jsonify({
             'success': True,
             'message': 'Entry saved successfully',
-            'entry_id': entry_id
+            'entry_id': entry_id,
+            'nlu_processed': bool(full_conversation_text),
+            'graph_stored': graph_result.get('success', False) if full_conversation_text else False
         })
 
     except Exception as e:
