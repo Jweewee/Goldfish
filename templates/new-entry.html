@@ -323,7 +323,7 @@
             <div class="save-error" id="saveError"></div>
 
             <div class="entry-section">
-                <div class="llm-prompt" id="currentPrompt">goldfish is swimming...</div>
+                <div class="llm-prompt" id="currentPrompt">Goldfish is swimming...</div>
                 <textarea
                     class="entry-textarea"
                     id="entryTextarea"
@@ -475,7 +475,7 @@
             if (confirm('Start a new session? This will clear your current conversation.')) {
                 try {
                     await fetch('/new_session', { method: 'POST' });
-                    currentPrompt.textContent = 'goldfish is swimming...';
+                    currentPrompt.textContent = 'Goldfish is swimming...';
                     entryTextarea.value = '';
                     hideMessages();
                     await getNextPrompt();
