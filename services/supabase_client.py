@@ -8,8 +8,27 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Thread-local storage for Supabase clients
+_client = None
+
+def get_supabase_client() -> Client:
+    """
+    Get the shared Supabase client instance.
+    """
+    global _client
+    if _client is None:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+        
+        if not url or not key:
+            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
+        
+        _client = create_client(url, key)
+    
+    return _client
+
 class SupabaseClient:
-    """Singleton Supabase client instance"""
+    """Singleton Supabase client instance (deprecated - use get_supabase_client instead)"""
     _instance = None
     _client = None
     
@@ -34,5 +53,5 @@ class SupabaseClient:
         """Get the Supabase client instance"""
         return self._client
 
-# Global instance
+# Global instance (for backward compatibility)
 supabase_client = SupabaseClient().client

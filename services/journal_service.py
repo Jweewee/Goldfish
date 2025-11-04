@@ -3,7 +3,7 @@ Journal service for managing journal entries in Supabase
 """
 from typing import List, Dict, Any, Optional
 from supabase import Client
-from services.supabase_client import supabase_client
+from services.supabase_client import supabase_client, get_supabase_client
 import logging
 from datetime import datetime
 
@@ -15,7 +15,14 @@ class JournalService:
     def __init__(self, client: Client = None):
         self.client = client or supabase_client
     
-    def save_entry(self, user_id: str, conversation_history: List[Dict], summary: str) -> Dict[str, Any]:
+    def _get_client(self, access_token: Optional[str] = None, refresh_token: Optional[str] = None) -> Client:
+        client = supabase_client
+        if access_token and refresh_token:
+            client.auth.set_session(access_token, refresh_token)
+        return client
+    
+    def save_entry(self, user_id: str, conversation_history: List[Dict], summary: str, 
+                   access_token: Optional[str] = None, refresh_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Save a journal entry
         
@@ -23,11 +30,14 @@ class JournalService:
             user_id: ID of the user
             conversation_history: List of conversation turns
             summary: Summary of the conversation
+            access_token: Optional access token for thread-local client
+            refresh_token: Optional refresh token for thread-local client
             
         Returns:
             Dict containing the saved entry data
         """
         try:
+            client = self._get_client(access_token, refresh_token)
             # Convert conversation history to array of strings
             journal_interaction = []
             for turn in conversation_history:
@@ -37,7 +47,7 @@ class JournalService:
                     journal_interaction.append(f"Assistant: {turn.get('content', '')}")
             
             # Insert into journal_entries table
-            response = self.client.table("journal_entries").insert({
+            response = client.table("journal_entries").insert({
                 "user_id": user_id,
                 "summarized_text": summary,
                 "journal_interaction": journal_interaction,
@@ -64,19 +74,23 @@ class JournalService:
                 "error": str(e)
             }
     
-    def get_user_entries(self, user_id: str, limit: int = 50) -> Dict[str, Any]:
+    def get_user_entries(self, user_id: str, limit: int = 50, 
+                         access_token: Optional[str] = None, refresh_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Get all journal entries for a user
         
         Args:
             user_id: ID of the user
             limit: Maximum number of entries to return
+            access_token: Optional access token for thread-local client
+            refresh_token: Optional refresh token for thread-local client
             
         Returns:
             Dict containing list of entries
         """
         try:
-            response = self.client.table("journal_entries")\
+            client = self._get_client(access_token, refresh_token)
+            response = client.table("journal_entries")\
                 .select("*")\
                 .eq("user_id", user_id)\
                 .order("timestamp", desc=True)\
@@ -97,18 +111,22 @@ class JournalService:
                 "entries": []
             }
     
-    def get_entry_by_id(self, entry_id: str) -> Dict[str, Any]:
+    def get_entry_by_id(self, entry_id: str, 
+                         access_token: Optional[str] = None, refresh_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Get a specific journal entry by ID
         
         Args:
             entry_id: ID of the entry
+            access_token: Optional access token for thread-local client
+            refresh_token: Optional refresh token for thread-local client
             
         Returns:
             Dict containing the entry data
         """
         try:
-            response = self.client.table("journal_entries")\
+            client = self._get_client(access_token, refresh_token)
+            response = client.table("journal_entries")\
                 .select("*")\
                 .eq("id", entry_id)\
                 .execute()
@@ -131,27 +149,31 @@ class JournalService:
                 "error": str(e)
             }
     
-    def delete_entry(self, entry_id: str, user_id: str) -> Dict[str, Any]:
+    def delete_entry(self, entry_id: str, user_id: str,
+                     access_token: Optional[str] = None, refresh_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Delete a journal entry
         
         Args:
             entry_id: ID of the entry to delete
             user_id: ID of the user (for security)
+            access_token: Optional access token for thread-local client
+            refresh_token: Optional refresh token for thread-local client
             
         Returns:
             Dict with success status
         """
         try:
+            client = self._get_client(access_token, refresh_token)
             # First delete associated vectors
-            self.client.table("journal_entry_vectors")\
+            client.table("journal_entry_vectors")\
                 .delete()\
                 .eq("entry_id", entry_id)\
                 .eq("user_id", user_id)\
                 .execute()
             
             # Then delete the entry
-            response = self.client.table("journal_entries")\
+            response = client.table("journal_entries")\
                 .delete()\
                 .eq("id", entry_id)\
                 .eq("user_id", user_id)\
@@ -169,19 +191,23 @@ class JournalService:
                 "error": str(e)
             }
     
-    def get_recent_entries(self, user_id: str, limit: int = 5) -> Dict[str, Any]:
+    def get_recent_entries(self, user_id: str, limit: int = 5,
+                           access_token: Optional[str] = None, refresh_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Get recent journal entries for dashboard
         
         Args:
             user_id: ID of the user
             limit: Number of recent entries to return
+            access_token: Optional access token for thread-local client
+            refresh_token: Optional refresh token for thread-local client
             
         Returns:
             Dict containing recent entries
         """
         try:
-            response = self.client.table("journal_entries")\
+            client = self._get_client(access_token, refresh_token)
+            response = client.table("journal_entries")\
                 .select("id, summarized_text, timestamp")\
                 .eq("user_id", user_id)\
                 .order("timestamp", desc=True)\

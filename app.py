@@ -4,7 +4,7 @@ Goldfish Web App - Flask Backend
 A web interface for the Rosebud-style journaling assistant with Supabase integration
 """
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, g
 import openai
 import os
 import json
@@ -35,14 +35,64 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key-here')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def get_tokens_from_request():
+    """Extract access and refresh tokens from request headers or body"""
+    # Try to get from Authorization header first
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header and auth_header.startswith('Bearer '):
+        access_token = auth_header.replace('Bearer ', '').strip()
+        # Refresh token might be in request body or separate header
+        refresh_token = request.headers.get('X-Refresh-Token')
+        if not refresh_token and request.is_json:
+            try:
+                data = request.get_json()
+                if data:
+                    refresh_token = data.get('refresh_token')
+            except:
+                pass
+        if refresh_token:
+            refresh_token = str(refresh_token).strip() if isinstance(refresh_token, str) else refresh_token
+        return access_token, refresh_token
+    
+    # Fallback to request body
+    if request.is_json:
+        try:
+            data = request.get_json()
+            if data:
+                access_token = data.get('access_token')
+                refresh_token = data.get('refresh_token')
+                if access_token:
+                    access_token = str(access_token).strip() if isinstance(access_token, str) else access_token
+                    if refresh_token:
+                        refresh_token = str(refresh_token).strip() if isinstance(refresh_token, str) else refresh_token
+                    return access_token, refresh_token
+        except:
+            pass
+    
+    # Fallback to Flask session (for backward compatibility during migration)
+    access_token = session.get('supabase_access_token')
+    refresh_token = session.get('supabase_refresh_token')
+    return access_token, refresh_token
+
 # Authentication decorator
 def require_auth(f):
     """Decorator to require authentication for routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        user = auth_service.get_current_user()
+        # Get tokens from request
+        access_token, refresh_token = get_tokens_from_request()
+        if not access_token:
+            if request.is_json or request.path.startswith('/api/'):
+                return jsonify({'error': 'Authentication required'}), 401
+            else:
+                return redirect(url_for('login'))
+        
+        user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
         if not user:
-            return redirect(url_for('login'))
+            if request.is_json or request.path.startswith('/api/'):
+                return jsonify({'error': 'Invalid or expired token'}), 401
+            else:
+                return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -154,14 +204,27 @@ def api_signup():
         result = auth_service.sign_up(email, password)
         
         if result['success']:
-            return jsonify({
+            # Store tokens in Flask session for page routes if session is returned
+            if result.get('session') and result['session']:
+                session['supabase_access_token'] = result['session'].access_token
+                session['supabase_refresh_token'] = result['session'].refresh_token
+                session.permanent = True
+            
+            response_data = {
                 'success': True,
                 'message': result['message'],
                 'user': {
                     'id': result['user'].id,
                     'email': result['user'].email
                 }
-            })
+            }
+            
+            # Include tokens in response if session is returned (some Supabase configs auto-login)
+            if result.get('session') and result['session']:
+                response_data['access_token'] = result['session'].access_token
+                response_data['refresh_token'] = result['session'].refresh_token
+            
+            return jsonify(response_data)
         else:
             return jsonify({'error': result['error']}), 400
             
@@ -183,14 +246,28 @@ def api_login():
         result = auth_service.sign_in(email, password)
         
         if result['success']:
-            return jsonify({
+            # Store tokens in Flask session for page routes (browser navigation)
+            if result.get('session'):
+                session['supabase_access_token'] = result['session'].access_token
+                session['supabase_refresh_token'] = result['session'].refresh_token
+                session.permanent = True
+            
+            # Return tokens in response for client-side storage (API requests)
+            response_data = {
                 'success': True,
                 'message': result['message'],
                 'user': {
                     'id': result['user'].id,
                     'email': result['user'].email
                 }
-            })
+            }
+            
+            # Include tokens in response if session exists
+            if result.get('session'):
+                response_data['access_token'] = result['session'].access_token
+                response_data['refresh_token'] = result['session'].refresh_token
+            
+            return jsonify(response_data)
         else:
             return jsonify({'error': result['error']}), 401
             
@@ -202,17 +279,32 @@ def api_login():
 def api_logout():
     """User logout API"""
     try:
+        # Get tokens from request
+        access_token, refresh_token = get_tokens_from_request()
+        if access_token and refresh_token:
+            auth_service.set_session(access_token, refresh_token)
+        
         result = auth_service.sign_out()
+        
+        # Clear Flask session tokens
+        session.pop('supabase_access_token', None)
+        session.pop('supabase_refresh_token', None)
+        
         return jsonify({'success': True, 'message': result['message']})
     except Exception as e:
         logger.error(f"Logout error: {str(e)}")
+        # Clear session even if sign_out fails
+        session.pop('supabase_access_token', None)
+        session.pop('supabase_refresh_token', None)
         return jsonify({'error': 'Logout failed'}), 500
 
 @app.route('/api/auth/user', methods=['GET'])
 def api_get_user():
     """Get current user API"""
     try:
-        user = auth_service.get_current_user()
+        # Get tokens from request
+        access_token, refresh_token = get_tokens_from_request()
+        user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
         if user:
             return jsonify({'success': True, 'user': user})
         else:
@@ -225,9 +317,13 @@ def api_get_user():
 @app.route('/')
 def index():
     """Landing page - redirect to login"""
-    user = auth_service.get_current_user()
-    if user:
-        return redirect(url_for('home'))
+    # For page routes, check Flask session (tokens will be in localStorage for API routes)
+    access_token = session.get('supabase_access_token')
+    refresh_token = session.get('supabase_refresh_token')
+    if access_token and refresh_token:
+        user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
+        if user:
+            return redirect(url_for('home'))
     return redirect(url_for('login'))
 
 @app.route('/auth/callback')
@@ -239,10 +335,15 @@ def auth_callback():
         refresh_token = request.args.get('refresh_token')
         
         if access_token and refresh_token:
+            # Store tokens in Flask session
+            session['supabase_access_token'] = access_token
+            session['supabase_refresh_token'] = refresh_token
+            session.permanent = True
+            
             # Set the session with the tokens
             if auth_service.set_session(access_token, refresh_token):
                 # Get user info
-                user = auth_service.get_current_user()
+                user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
                 if user:
                     return redirect(url_for('home'))
         
@@ -262,23 +363,42 @@ def login():
 @require_auth
 def home():
     """Dashboard after login"""
-    user = auth_service.get_current_user()
-    recent_entries = journal_service.get_recent_entries(user['id'], limit=5)
+    # For page routes, tokens will be checked in require_auth decorator
+    # For now, use Flask session fallback
+    access_token, refresh_token = get_tokens_from_request()
+    if not access_token:
+        access_token = session.get('supabase_access_token')
+        refresh_token = session.get('supabase_refresh_token')
+    
+    user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
+    recent_entries = journal_service.get_recent_entries(user['id'], limit=5, 
+                                                       access_token=access_token, refresh_token=refresh_token)
     return render_template('home.html', user=user, recent_entries=recent_entries.get('entries', []))
 
 @app.route('/entries')
 @require_auth
 def entries():
     """View all journal entries"""
-    user = auth_service.get_current_user()
-    all_entries = journal_service.get_user_entries(user['id'])
+    access_token, refresh_token = get_tokens_from_request()
+    if not access_token:
+        access_token = session.get('supabase_access_token')
+        refresh_token = session.get('supabase_refresh_token')
+    
+    user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
+    all_entries = journal_service.get_user_entries(user['id'], 
+                                                  access_token=access_token, refresh_token=refresh_token)
     return render_template('entries.html', user=user, entries=all_entries.get('entries', []))
 
 @app.route('/new-entry')
 @require_auth
 def new_entry():
     """Start new journal session"""
-    user = auth_service.get_current_user()
+    access_token, refresh_token = get_tokens_from_request()
+    if not access_token:
+        access_token = session.get('supabase_access_token')
+        refresh_token = session.get('supabase_refresh_token')
+    
+    user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
     return render_template('new-entry.html', user=user)
 
 # API Routes
@@ -287,7 +407,8 @@ def new_entry():
 def chat():
     """Handle chat messages with Agent Service (RAG + NLU + GraphRAG)"""
     try:
-        user = auth_service.get_current_user()
+        access_token, refresh_token = get_tokens_from_request()
+        user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
         data = request.get_json()
         user_message = data.get('message', '').strip()
 
@@ -347,7 +468,8 @@ def new_session():
 def save_entry():
     """Save journal entry to Supabase with embeddings, NLU, and GraphRAG"""
     try:
-        user = auth_service.get_current_user()
+        access_token, refresh_token = get_tokens_from_request()
+        user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
         
         if 'conversation_history' not in session or not session['conversation_history']:
             return jsonify({'error': 'No conversation to save'}), 400
@@ -359,7 +481,9 @@ def save_entry():
         result = journal_service.save_entry(
             user_id=user['id'],
             conversation_history=session['conversation_history'],
-            summary=summary
+            summary=summary,
+            access_token=access_token,
+            refresh_token=refresh_token
         )
         
         if not result['success']:
@@ -430,8 +554,10 @@ def save_entry():
 def api_get_entries():
     """Get user's journal entries"""
     try:
-        user = auth_service.get_current_user()
-        result = journal_service.get_user_entries(user['id'])
+        access_token, refresh_token = get_tokens_from_request()
+        user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
+        result = journal_service.get_user_entries(user['id'], 
+                                                  access_token=access_token, refresh_token=refresh_token)
         
         if result['success']:
             return jsonify({
@@ -451,8 +577,10 @@ def api_get_entries():
 def api_get_entry(entry_id):
     """Get specific journal entry"""
     try:
-        user = auth_service.get_current_user()
-        result = journal_service.get_entry_by_id(entry_id)
+        access_token, refresh_token = get_tokens_from_request()
+        user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
+        result = journal_service.get_entry_by_id(entry_id, 
+                                                access_token=access_token, refresh_token=refresh_token)
         
         if result['success']:
             # Check if user owns this entry
@@ -475,8 +603,10 @@ def api_get_entry(entry_id):
 def api_delete_entry(entry_id):
     """Delete journal entry"""
     try:
-        user = auth_service.get_current_user()
-        result = journal_service.delete_entry(entry_id, user['id'])
+        access_token, refresh_token = get_tokens_from_request()
+        user = auth_service.get_current_user(access_token=access_token, refresh_token=refresh_token)
+        result = journal_service.delete_entry(entry_id, user['id'], 
+                                              access_token=access_token, refresh_token=refresh_token)
         
         if result['success']:
             return jsonify({'success': True, 'message': result['message']})

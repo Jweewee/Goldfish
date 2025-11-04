@@ -3,7 +3,7 @@ Authentication service for Supabase auth integration
 """
 from typing import Optional, Dict, Any
 from supabase import Client
-from services.supabase_client import supabase_client
+from services.supabase_client import supabase_client, get_supabase_client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,6 +13,12 @@ class AuthService:
     
     def __init__(self, client: Client = None):
         self.client = client or supabase_client
+    
+    def _get_client(self, access_token: Optional[str] = None, refresh_token: Optional[str] = None) -> Client:
+        client = supabase_client
+        if access_token and refresh_token:
+            client.auth.set_session(access_token, refresh_token)
+        return client
     
     def sign_up(self, email: str, password: str) -> Dict[str, Any]:
         """
@@ -108,15 +114,21 @@ class AuthService:
                 "error": str(e)
             }
     
-    def get_current_user(self) -> Optional[Dict[str, Any]]:
+    def get_current_user(self, access_token: Optional[str] = None, refresh_token: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Get the currently authenticated user
+        
+        Args:
+            access_token: Optional access token to use. If not provided, uses session.
+            refresh_token: Optional refresh token (used for thread-local client).
         
         Returns:
             User data if authenticated, None otherwise
         """
         try:
-            response = self.client.auth.get_user()
+            # Use thread-local client if tokens are provided
+            client = self._get_client(access_token, refresh_token)
+            response = client.auth.get_user(jwt=access_token)
             if response.user:
                 return {
                     "id": response.user.id,
@@ -141,10 +153,7 @@ class AuthService:
             True if successful, False otherwise
         """
         try:
-            self.client.auth.set_session({
-                "access_token": access_token,
-                "refresh_token": refresh_token
-            })
+            self.client.auth.set_session(access_token, refresh_token)
             return True
         except Exception as e:
             logger.error(f"Set session error: {str(e)}")

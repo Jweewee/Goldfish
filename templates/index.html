@@ -292,6 +292,21 @@
     </div>
 
     <script>
+        // Helper function to get auth headers
+        function getAuthHeaders() {
+            const accessToken = localStorage.getItem('supabase_access_token');
+            const refreshToken = localStorage.getItem('supabase_refresh_token');
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (accessToken) {
+                headers['Authorization'] = `Bearer ${accessToken}`;
+                if (refreshToken) {
+                    headers['X-Refresh-Token'] = refreshToken;
+                }
+            }
+            return headers;
+        }
         const chatMessages = document.getElementById('chatMessages');
         const messageForm = document.getElementById('messageForm');
         const messageInput = document.getElementById('messageInput');
@@ -316,13 +331,11 @@
             setLoading(true);
 
             try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ message: message }),
-                });
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ message: message }),
+                    });
 
                 const data = await response.json();
 
@@ -382,7 +395,10 @@
         async function newSession() {
             if (confirm('Start a new session? This will clear your current conversation.')) {
                 try {
-                    await fetch('/new_session', { method: 'POST' });
+                    await fetch('/new_session', { 
+                        method: 'POST',
+                        headers: getAuthHeaders()
+                    });
                     chatMessages.innerHTML = '<div class="welcome-message">Welcome to your journaling space. Take a deep breath and share what\'s on your mind...</div>';
                 } catch (error) {
                     alert('Error starting new session');
@@ -412,9 +428,7 @@
                 try {
                     const response = await fetch('/chat', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: getAuthHeaders(),
                         body: JSON.stringify({ message: 'Hello' }),
                     });
 

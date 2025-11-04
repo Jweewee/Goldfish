@@ -349,7 +349,7 @@ Response: "Understandable. Missing someone is complex. What exactly are you miss
         
         if context_parts:
             enhanced_prompt += "\n\n**Context from Past Entries:**\n" + "\n".join(context_parts)
-            enhanced_prompt += "\n\nUse this context subtly and naturally, but don't over-reference it."
+            enhanced_prompt += "\n\nUse this context subtly and naturally, but don't over-reference it. Reference it like `I remember you mentioned X some time ago — how is that going lately?`"
         
         # Add intent guidance
         enhanced_prompt += f"\n\n**Current Task:** {intent_prompt}"
