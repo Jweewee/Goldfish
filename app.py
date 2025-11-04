@@ -495,4 +495,12 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     print("Starting Goldfish Journaling Assistant...")
     print(f"Server running on port: {port}")
-    app.run(debug=True, host='0.0.0.0', port=port)
+
+    # Check if running in production (Render sets this)
+    is_production = os.environ.get('RENDER') is not None
+    if is_production:
+        # Production: Don't run directly, gunicorn will handle it
+        print("Production mode: Use 'gunicorn app:app' to start")
+    else:
+        # Development: Use Flask's development server
+        app.run(debug=True, host='0.0.0.0', port=port)
